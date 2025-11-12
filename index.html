@@ -1,0 +1,121 @@
+<!-- index.html - The Front-End UI with a "New Chat" button -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bridge Buddy</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div id="app-container">
+    <header>
+      <div class="header-content">
+        <h1>BridgeBuddy 🤖</h1>
+        <p>Your AI-powered expert for ProtoPie Bridge Apps</p>
+      </div>
+      <!-- NEW "New Chat" BUTTON -->
+      <button id="new-chat-button">New Chat</button>
+    </header>
+
+    <div id="chat-container">
+      <!-- Chat messages will be added here dynamically -->
+    </div>
+
+    <div id="input-area">
+      <input type="text" id="prompt-input" placeholder="Ask a question about ProtoPie Bridge, NodeJS, or JSON...">
+      <button id="send-button">Send</button>
+    </div>
+  </div>
+
+  <script>
+    // client.js - Front-End Logic
+
+    const chatContainer = document.getElementById('chat-container');
+    const promptInput = document.getElementById('prompt-input');
+    const sendButton = document.getElementById('send-button');
+    const newChatButton = document.getElementById('new-chat-button'); // Get the new button
+
+    const initialGreeting = "Hello! I'm Bridge Buddy. Ask me anything about creating ProtoPie Bridge apps with NodeJS and JSON!";
+
+    // Function to add a message to the chat window
+    function addMessage(text, sender) {
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${sender}-message`;
+      // A simple way to render markdown-like code blocks and newlines
+      const formattedText = text
+        .replace(/```javascript\n/g, '<pre><code>')
+        .replace(/```json\n/g, '<pre><code>')
+        .replace(/```\n/g, '</code></pre>')
+        .replace(/\n/g, '<br>');
+      messageDiv.innerHTML = formattedText;
+      chatContainer.appendChild(messageDiv);
+      chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to the bottom
+    }
+
+    // --- NEW FUNCTION to start a new chat ---
+    function startNewChat() {
+      // Clear all messages from the container
+      chatContainer.innerHTML = '';
+      // Add the initial greeting back
+      addMessage(initialGreeting, 'buddy');
+      promptInput.focus();
+    }
+    // --- END NEW FUNCTION ---
+
+    async function handleSend() {
+      const prompt = promptInput.value.trim();
+      if (!prompt) return;
+
+      addMessage(prompt, 'user');
+      promptInput.value = '';
+      sendButton.disabled = true;
+      addMessage('Buddy is thinking...', 'loading');
+
+      try {
+        const response = await fetch('/ask-buddy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: prompt })
+        });
+
+        chatContainer.removeChild(chatContainer.lastChild);
+
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+
+        const data = await response.json();
+        addMessage(data.response, 'buddy');
+
+      } catch (error) {
+        console.error('Error:', error);
+        // Make sure to remove the loading message even if there's an error
+        if (chatContainer.lastChild && chatContainer.lastChild.classList.contains('loading-message')) {
+            chatContainer.removeChild(chatContainer.lastChild);
+        }
+        addMessage('Sorry, something went wrong. Please try again.', 'buddy');
+      } finally {
+        sendButton.disabled = false;
+        promptInput.focus();
+      }
+    }
+
+    // Event Listeners
+    sendButton.addEventListener('click', handleSend);
+    promptInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        handleSend();
+      }
+    });
+    // Add event listener for the new chat button
+    newChatButton.addEventListener('click', startNewChat);
+
+    // Start the first chat on page load
+    startNewChat();
+
+  </script>
+</body>
+</html>
